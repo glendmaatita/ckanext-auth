@@ -20,7 +20,8 @@ def user_login(context, data_dict):
         return generic_error_message
 
     user = user.as_dict()
-    user['token'] = ApiToken(data_dict['id'])
+    token = ApiToken(data_dict['id'])
+    user['token'] = token.id
 
     if data_dict[u'password']:
         identity = {
