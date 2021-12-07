@@ -2,6 +2,7 @@ import ckan.logic as logic
 import ckan.lib.authenticator as authenticator
 from ckan.plugins import toolkit as tk
 from ckan.common import _
+from ckan.model import ApiToken
 
 _check_access = logic.check_access
 
@@ -19,6 +20,7 @@ def user_login(context, data_dict):
         return generic_error_message
 
     user = user.as_dict()
+    user['token'] = ApiToken(user.id)
 
     if data_dict[u'password']:
         identity = {
