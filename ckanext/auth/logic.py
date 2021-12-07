@@ -1,5 +1,6 @@
 import ckan.logic as logic
 import ckan.lib.authenticator as authenticator
+import ckan.lib.api_token as api_token
 from ckan.plugins import toolkit as tk
 from ckan.common import _
 from ckan.model import ApiToken
@@ -20,8 +21,15 @@ def user_login(context, data_dict):
         return generic_error_message
 
     user = user.as_dict()
-    token = ApiToken(data_dict['id'])
-    user['token'] = token.id
+
+    token_obj = ApiToken(data_dict['id'])
+    token_data = {
+        u'jti': token_obj.id,
+        u'iat': api_token.into_seconds(token_obj.created_at)
+    }
+    token = api_token.encode(token_data)
+
+    user['token'] = token
 
     if data_dict[u'password']:
         identity = {
