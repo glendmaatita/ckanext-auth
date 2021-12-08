@@ -1,9 +1,10 @@
 import ckan.logic as logic
 import ckan.lib.authenticator as authenticator
 import ckan.lib.api_token as api_token
+import ckan.lib.dictization.model_save as model_save
+import ckan.model as model
 from ckan.plugins import toolkit as tk
 from ckan.common import _
-from ckan.model import ApiToken
 
 _check_access = logic.check_access
 
@@ -16,13 +17,38 @@ def user_login(context, data_dict):
         u'error_summary': {_(u'auth'): _(u'Incorrect username or password')}
     }
     model = context['model']
-    user = model.User.get(data_dict['id'])
+    user = model.User.get(data_dict['name'])
     if not user:
-        return generic_error_message
+        site_user = logic.get_action(u'get_site_user')({
+            u'model': model,
+            u'ignore_auth': True},
+            {}
+        )
+        context = {
+            u'model': model,
+            u'session': model.Session,
+            u'ignore_auth': True,
+            u'user': site_user['name'],
+        }
+        user = logic.get_action(u'user_create')(context, data_dict)
+    else:
+        user = user.as_dict()
 
-    user = user.as_dict()
+    # get token if exists
+    token = model.Session.query(model.ApiToken).filter(
+        model.ApiToken.user_id == user['id']
+    ).first()
 
-    token_obj = ApiToken(data_dict['id'])
+    print(token, flush=True)
+
+    if not token:
+        token_obj = model_save.api_token_save(
+            {u'user': user['id'], u'name': user['name']}, context
+        )
+    else:
+        token_obj = token
+
+    model.Session.commit()
     token_data = {
         u'jti': token_obj.id,
         u'iat': api_token.into_seconds(token_obj.created_at)
